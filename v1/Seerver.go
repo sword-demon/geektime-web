@@ -12,7 +12,7 @@ type Server interface {
 	// addr: 监听的地址， 如果只指定端口: 可以使用 ":8081"
 	// 或者 "localhost:8081"
 	Start(addr string) error
-	// AddRoute 注册一个路由
+	// addRoute 注册一个路由
 	// method 是 HTTP 方法
 	// path 路径 必须以 / 开头
 	AddRoute(method string, path string, handler HandleFunc)
