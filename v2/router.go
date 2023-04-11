@@ -79,6 +79,34 @@ func (r *router) addRoute(method string, path string, handlerFunc HandleFunc) {
 	root.handler = handlerFunc
 }
 
+func (r *router) findRoute(method string, path string) (*node, bool) {
+	// 沿着树深度遍历查找下去
+	root, ok := r.trees[method]
+	if !ok {
+		return nil, false
+	}
+	// 如果是根节点直接返回
+	if path == "/" {
+		return root, true
+	}
+	// 把前置和后置的 / 去掉
+	path = strings.Trim(path, "/")
+	// 按照 / 切割
+	segs := strings.Split(path, "/")
+	for _, seg := range segs {
+		child, found := root.childOf(seg)
+		if !found {
+			return nil, false
+		}
+		root = child
+	}
+
+	// 代表我确实有这个节点
+	// 但是节点是不是用户注册的业务逻辑 有 handler 的 就不一定了
+	//return root, root.handler != nil
+	return root, true
+}
+
 func (n *node) childOrCreate(seg string) *node {
 	if n.children == nil {
 		n.children = map[string]*node{}
@@ -92,6 +120,14 @@ func (n *node) childOrCreate(seg string) *node {
 		n.children[seg] = res
 	}
 	return res
+}
+
+func (n *node) childOf(path string) (*node, bool) {
+	if n.children == nil {
+		return nil, false
+	}
+	child, ok := n.children[path]
+	return child, ok
 }
 
 type node struct {

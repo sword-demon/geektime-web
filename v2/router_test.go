@@ -174,3 +174,113 @@ func (n *node) equal(y *node) (string, bool) {
 	}
 	return "", true
 }
+
+func TestRouter_findRoute(t *testing.T) {
+	testRoute := []struct {
+		method string
+		path   string
+	}{
+		{
+			method: http.MethodGet,
+			path:   "/",
+		},
+		{
+			method: http.MethodDelete,
+			path:   "/",
+		},
+		{
+			method: http.MethodGet,
+			path:   "/user",
+		},
+		{
+			method: http.MethodGet,
+			path:   "/user/home",
+		},
+		{
+			method: http.MethodGet,
+			path:   "/order/detail",
+		},
+		{
+			method: http.MethodPost,
+			path:   "/order/create",
+		},
+	}
+	var mockHandler HandleFunc = func(ctx *Context) {
+
+	}
+	r := newRouter()
+	for _, route := range testRoute {
+		r.addRoute(route.method, route.path, mockHandler)
+	}
+
+	testCases := []struct {
+		name      string
+		method    string
+		path      string
+		wantFound bool
+		wantNode  *node
+	}{
+		{
+			// 方法都不存在
+			name:   "method not found",
+			method: http.MethodOptions,
+			path:   "/order/detail",
+		},
+		{
+			// 完全命中
+			name:      "order detail",
+			method:    http.MethodGet,
+			path:      "/order/detail",
+			wantFound: true,
+			wantNode: &node{
+				handler: mockHandler,
+				path:    "detail",
+			},
+		},
+		{
+			// 命中了但是没有 handler
+			name:      "order",
+			method:    http.MethodGet,
+			path:      "/order",
+			wantFound: true,
+			wantNode: &node{
+				path: "order",
+				children: map[string]*node{
+					"detail": &node{
+						path:    "detail",
+						handler: mockHandler,
+					},
+				},
+			},
+		},
+		{
+			// 根节点
+			name:      "root",
+			method:    http.MethodDelete,
+			path:      "/",
+			wantFound: true,
+			wantNode: &node{
+				path:    "/",
+				handler: mockHandler,
+			},
+		},
+		{
+			// path nod found
+			name:   "path not found",
+			method: http.MethodGet,
+			path:   "/aaaabbbccc",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			n, found := r.findRoute(tc.method, tc.path)
+			assert.Equal(t, tc.wantFound, found)
+			if !found {
+				return
+			}
+			msg, ok := tc.wantNode.equal(n)
+			assert.True(t, ok, msg)
+		})
+	}
+}
