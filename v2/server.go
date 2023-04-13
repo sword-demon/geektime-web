@@ -8,8 +8,7 @@ type HandleFunc func(ctx *Context)
 
 type Server interface {
 	http.Handler
-	Stat(addr string) error
-	addRoute(method string, path string, handler HandleFunc)
+	Start(addr string) error
 }
 
 var _ Server = &HTTPServer{}
@@ -30,13 +29,8 @@ func (h *HTTPServer) ServeHTTP(writer http.ResponseWriter, request *http.Request
 	h.serve(ctx)
 }
 
-func (h *HTTPServer) Stat(addr string) error {
+func (h *HTTPServer) Start(addr string) error {
 	return http.ListenAndServe(addr, h)
-}
-
-func (h *HTTPServer) addRoute(method string, path string, handler HandleFunc) {
-	//TODO implement me
-	panic("implement me")
 }
 
 func (h *HTTPServer) Post(path string, handler HandleFunc) {
@@ -48,5 +42,12 @@ func (h *HTTPServer) Get(path string, handler HandleFunc) {
 }
 
 func (h *HTTPServer) serve(ctx *Context) {
-
+	n, ok := h.findRoute(ctx.Req.Method, ctx.Req.URL.Path)
+	if !ok || n.handler == nil {
+		// 路由没有命中 404
+		ctx.Resp.WriteHeader(404)
+		_, _ = ctx.Resp.Write([]byte("not found"))
+		return
+	}
+	n.handler(ctx)
 }
