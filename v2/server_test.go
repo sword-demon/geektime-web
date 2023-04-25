@@ -31,6 +31,11 @@ func TestServer(t *testing.T) {
 		_, _ = ctx.Resp.Write([]byte("hello order detail"))
 	})
 
+	// 通配符匹配
+	h.Get("/order/*", func(ctx *Context) {
+		ctx.Resp.Write([]byte(fmt.Sprintf("hello, %s", ctx.Req.URL.Path)))
+	})
+
 	err := h.Start(":8087")
 	if err != nil {
 		return

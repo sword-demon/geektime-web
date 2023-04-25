@@ -35,9 +35,14 @@ func TestRouter_AddRoute(t *testing.T) {
 			path:   "/order/detail",
 		},
 		{
+			method: http.MethodGet,
+			path:   "/order/*",
+		},
+		{
 			method: http.MethodPost,
 			path:   "/order/create",
 		},
+
 		// 对以下内容加校验，不能支持用户这么去写
 		// login///
 		// /login///
@@ -77,6 +82,10 @@ func TestRouter_AddRoute(t *testing.T) {
 								path:    "detail",
 								handler: mockHandler,
 							},
+						},
+						startChild: &node{
+							path:    "*",
+							handler: mockHandler,
 						},
 					},
 				},
@@ -155,6 +164,16 @@ func (n *node) equal(y *node) (string, bool) {
 	if len(n.children) != len(y.children) {
 		return fmt.Sprintf("子节点数量不匹配"), false
 	}
+
+	// 比较 startChild
+	if n.startChild != nil {
+		// 严格判断还需要判断 y.startChild 是否是 nil
+		msg, ok := n.startChild.equal(y.startChild)
+		if !ok {
+			return msg, ok
+		}
+	}
+
 	// 比较 handler
 	nHandler := reflect.ValueOf(n.handler)
 	yHandler := reflect.ValueOf(y.handler)
@@ -204,6 +223,22 @@ func TestRouter_findRoute(t *testing.T) {
 			method: http.MethodPost,
 			path:   "/order/create",
 		},
+		{
+			method: http.MethodGet,
+			path:   "/order/*",
+		},
+		//{
+		//	method: http.MethodPost,
+		//	path:   "/*",
+		//},
+		//{
+		//	method: http.MethodPost,
+		//	path:   "/*/*",
+		//},
+		//{
+		//	method: http.MethodPost,
+		//	path:   "/*/abc",
+		//},
 	}
 	var mockHandler HandleFunc = func(ctx *Context) {
 
@@ -235,6 +270,17 @@ func TestRouter_findRoute(t *testing.T) {
 			wantNode: &node{
 				handler: mockHandler,
 				path:    "detail",
+			},
+		},
+		{
+			// 完全命中
+			name:      "order start",
+			method:    http.MethodGet,
+			path:      "/order/abc",
+			wantFound: true,
+			wantNode: &node{
+				handler: mockHandler,
+				path:    "*",
 			},
 		},
 		{
