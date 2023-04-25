@@ -110,12 +110,18 @@ func (r *router) findRoute(method string, path string) (*node, bool) {
 func (n *node) childOrCreate(seg string) *node {
 	// 如果用户注册路由的第一段是冒号
 	if seg[0] == ':' {
+		if n.startChild != nil {
+			panic("web: 不允许同时注册路径参数和通配符匹配, 已有通配符匹配")
+		}
 		n.paramChild = &node{
 			path: seg,
 		}
 		return n.paramChild
 	}
 	if seg == "*" {
+		if n.paramChild != nil {
+			panic("web: 不允许同时注册路径参数和通配符匹配, 已有路径参数匹配")
+		}
 		n.startChild = &node{
 			path: seg,
 		}

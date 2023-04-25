@@ -147,6 +147,18 @@ func TestRouter_AddRoute(t *testing.T) {
 	// 可用的几个 http method 校验
 	// 将 AddRoute 改为私有， 直接使用自己写的 Get 等方法去默认提供给用户使用，所以不需要校验
 	// mockHandler 为 nil 的情况 需不需要校验 不需要校验，相当于不会注册
+
+	r = newRouter()
+	r.addRoute(http.MethodGet, "/a/*", mockHandler)
+	assert.Panicsf(t, func() {
+		r.addRoute(http.MethodGet, "/a/:id", mockHandler)
+	}, "web: 不允许同时注册路径参数和通配符匹配, 已有通配符匹配")
+
+	r = newRouter()
+	r.addRoute(http.MethodGet, "/a/:id", mockHandler)
+	assert.Panicsf(t, func() {
+		r.addRoute(http.MethodGet, "/a/*", mockHandler)
+	}, "web: 不允许同时注册路径参数和通配符匹配, 已有路径参数匹配")
 }
 
 func (r *router) equal(y router) (string, bool) {
@@ -313,7 +325,7 @@ func TestRouter_findRoute(t *testing.T) {
 			wantNode: &node{
 				path: "order",
 				children: map[string]*node{
-					"detail": &node{
+					"detail": {
 						path:    "detail",
 						handler: mockHandler,
 					},
