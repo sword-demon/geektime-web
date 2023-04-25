@@ -108,6 +108,13 @@ func (r *router) findRoute(method string, path string) (*node, bool) {
 }
 
 func (n *node) childOrCreate(seg string) *node {
+	// 如果用户注册路由的第一段是冒号
+	if seg[0] == ':' {
+		n.paramChild = &node{
+			path: seg,
+		}
+		return n.paramChild
+	}
 	if seg == "*" {
 		n.startChild = &node{
 			path: seg,
@@ -131,10 +138,16 @@ func (n *node) childOrCreate(seg string) *node {
 // childOf 优先考虑静态匹配 匹配不上再考虑 通配符匹配
 func (n *node) childOf(path string) (*node, bool) {
 	if n.children == nil {
+		if n.paramChild != nil {
+			return n.paramChild, true
+		}
 		return n.startChild, n.startChild != nil
 	}
 	child, ok := n.children[path]
 	if !ok {
+		if n.paramChild != nil {
+			return n.paramChild, true
+		}
 		return n.startChild, n.startChild != nil
 	}
 	return child, ok
@@ -152,4 +165,7 @@ type node struct {
 
 	// 加一个通配符匹配
 	startChild *node
+
+	// 路径参数匹配
+	paramChild *node
 }

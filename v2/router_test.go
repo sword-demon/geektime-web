@@ -36,6 +36,10 @@ func TestRouter_AddRoute(t *testing.T) {
 		},
 		{
 			method: http.MethodGet,
+			path:   "/order/detail/:id",
+		},
+		{
+			method: http.MethodGet,
 			path:   "/order/*",
 		},
 		{
@@ -81,6 +85,10 @@ func TestRouter_AddRoute(t *testing.T) {
 							"detail": {
 								path:    "detail",
 								handler: mockHandler,
+								paramChild: &node{
+									path:    ":id",
+									handler: mockHandler,
+								},
 							},
 						},
 						startChild: &node{
@@ -174,6 +182,15 @@ func (n *node) equal(y *node) (string, bool) {
 		}
 	}
 
+	// 比较 paramChild
+	if n.paramChild != nil {
+		// 严格判断还需要判断 y.startChild 是否是 nil
+		msg, ok := n.paramChild.equal(y.paramChild)
+		if !ok {
+			return msg, ok
+		}
+	}
+
 	// 比较 handler
 	nHandler := reflect.ValueOf(n.handler)
 	yHandler := reflect.ValueOf(y.handler)
@@ -218,6 +235,10 @@ func TestRouter_findRoute(t *testing.T) {
 		{
 			method: http.MethodGet,
 			path:   "/order/detail",
+		},
+		{
+			method: http.MethodPost,
+			path:   "/login/:username",
 		},
 		{
 			method: http.MethodPost,
@@ -315,6 +336,17 @@ func TestRouter_findRoute(t *testing.T) {
 			name:   "path not found",
 			method: http.MethodGet,
 			path:   "/aaaabbbccc",
+		},
+		{
+			// :username 路径参数匹配
+			name:      "login username",
+			method:    http.MethodPost,
+			path:      "login/wujie",
+			wantFound: true,
+			wantNode: &node{
+				path:    ":username",
+				handler: mockHandler,
+			},
 		},
 	}
 
