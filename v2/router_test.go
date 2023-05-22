@@ -286,7 +286,7 @@ func TestRouter_findRoute(t *testing.T) {
 		method    string
 		path      string
 		wantFound bool
-		wantNode  *node
+		wantNode  *matchInfo
 	}{
 		{
 			// 方法都不存在
@@ -300,9 +300,11 @@ func TestRouter_findRoute(t *testing.T) {
 			method:    http.MethodGet,
 			path:      "/order/detail",
 			wantFound: true,
-			wantNode: &node{
-				handler: mockHandler,
-				path:    "detail",
+			wantNode: &matchInfo{
+				n: &node{
+					handler: mockHandler,
+					path:    "detail",
+				},
 			},
 		},
 		{
@@ -311,9 +313,11 @@ func TestRouter_findRoute(t *testing.T) {
 			method:    http.MethodGet,
 			path:      "/order/abc",
 			wantFound: true,
-			wantNode: &node{
-				handler: mockHandler,
-				path:    "*",
+			wantNode: &matchInfo{
+				n: &node{
+					handler: mockHandler,
+					path:    "*",
+				},
 			},
 		},
 		{
@@ -322,12 +326,14 @@ func TestRouter_findRoute(t *testing.T) {
 			method:    http.MethodGet,
 			path:      "/order",
 			wantFound: true,
-			wantNode: &node{
-				path: "order",
-				children: map[string]*node{
-					"detail": {
-						path:    "detail",
-						handler: mockHandler,
+			wantNode: &matchInfo{
+				n: &node{
+					path: "order",
+					children: map[string]*node{
+						"detail": {
+							path:    "detail",
+							handler: mockHandler,
+						},
 					},
 				},
 			},
@@ -338,9 +344,11 @@ func TestRouter_findRoute(t *testing.T) {
 			method:    http.MethodDelete,
 			path:      "/",
 			wantFound: true,
-			wantNode: &node{
-				path:    "/",
-				handler: mockHandler,
+			wantNode: &matchInfo{
+				n: &node{
+					path:    "/",
+					handler: mockHandler,
+				},
 			},
 		},
 		{
@@ -355,21 +363,27 @@ func TestRouter_findRoute(t *testing.T) {
 			method:    http.MethodPost,
 			path:      "login/wujie",
 			wantFound: true,
-			wantNode: &node{
-				path:    ":username",
-				handler: mockHandler,
+			wantNode: &matchInfo{
+				n: &node{
+					path:    ":username",
+					handler: mockHandler,
+				},
+				pathParams: map[string]string{
+					"username": "wujie",
+				},
 			},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			n, found := r.findRoute(tc.method, tc.path)
+			info, found := r.findRoute(tc.method, tc.path)
 			assert.Equal(t, tc.wantFound, found)
 			if !found {
 				return
 			}
-			msg, ok := tc.wantNode.equal(n)
+			assert.Equal(t, tc.wantNode.pathParams, info.pathParams)
+			msg, ok := tc.wantNode.n.equal(info.n)
 			assert.True(t, ok, msg)
 		})
 	}

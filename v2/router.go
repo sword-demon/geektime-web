@@ -79,7 +79,7 @@ func (r *router) addRoute(method string, path string, handlerFunc HandleFunc) {
 	root.handler = handlerFunc
 }
 
-func (r *router) findRoute(method string, path string) (*node, bool) {
+func (r *router) findRoute(method string, path string) (*matchInfo, bool) {
 	// 沿着树深度遍历查找下去
 	root, ok := r.trees[method]
 	if !ok {
@@ -87,16 +87,26 @@ func (r *router) findRoute(method string, path string) (*node, bool) {
 	}
 	// 如果是根节点直接返回
 	if path == "/" {
-		return root, true
+		return &matchInfo{n: root}, true
 	}
 	// 把前置和后置的 / 去掉
 	path = strings.Trim(path, "/")
 	// 按照 / 切割
 	segs := strings.Split(path, "/")
+	// 构造 pathParams
+	var pathParams map[string]string
 	for _, seg := range segs {
-		child, found := root.childOf(seg)
+		child, paramChild, found := root.childOf(seg)
 		if !found {
 			return nil, false
+		}
+		// 命中了路径参数
+		if paramChild {
+			if pathParams == nil {
+				pathParams = make(map[string]string)
+			}
+			// path 是 :id 这种形式
+			pathParams[child.path[1:]] = seg
 		}
 		root = child
 	}
@@ -104,7 +114,10 @@ func (r *router) findRoute(method string, path string) (*node, bool) {
 	// 代表我确实有这个节点
 	// 但是节点是不是用户注册的业务逻辑 有 handler 的 就不一定了
 	//return root, root.handler != nil
-	return root, true
+	return &matchInfo{
+		n:          root,
+		pathParams: pathParams,
+	}, true
 }
 
 func (n *node) childOrCreate(seg string) *node {
@@ -142,21 +155,24 @@ func (n *node) childOrCreate(seg string) *node {
 }
 
 // childOf 优先考虑静态匹配 匹配不上再考虑 通配符匹配
-func (n *node) childOf(path string) (*node, bool) {
+// 第一个返回值是子节点
+// 第二个是标志是否是路径参数
+// 第三个标志命中了没有
+func (n *node) childOf(path string) (*node, bool, bool) {
 	if n.children == nil {
 		if n.paramChild != nil {
-			return n.paramChild, true
+			return n.paramChild, true, true
 		}
-		return n.startChild, n.startChild != nil
+		return n.startChild, false, n.startChild != nil
 	}
 	child, ok := n.children[path]
 	if !ok {
 		if n.paramChild != nil {
-			return n.paramChild, true
+			return n.paramChild, true, true
 		}
-		return n.startChild, n.startChild != nil
+		return n.startChild, false, n.startChild != nil
 	}
-	return child, ok
+	return child, false, ok
 }
 
 type node struct {
@@ -174,4 +190,9 @@ type node struct {
 
 	// 路径参数匹配
 	paramChild *node
+}
+
+type matchInfo struct {
+	n          *node
+	pathParams map[string]string
 }
