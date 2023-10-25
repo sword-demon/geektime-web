@@ -36,6 +36,10 @@ func TestServer(t *testing.T) {
 		ctx.Resp.Write([]byte(fmt.Sprintf("hello, %s", ctx.Req.URL.Path)))
 	})
 
+	h.Post("/form", func(ctx *Context) {
+		ctx.Req.ParseForm()
+	})
+
 	err := h.Start(":8087")
 	if err != nil {
 		return
