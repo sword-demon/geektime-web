@@ -40,6 +40,18 @@ func TestServer(t *testing.T) {
 		ctx.Req.ParseForm()
 	})
 
+	h.Get("/values/:id", func(ctx *Context) {
+		// 使用 StringValue 返回值可以进行链式调用来解析数据
+		id, err := ctx.PathValueV1("id").AsInt64()
+		if err != nil {
+			ctx.Resp.WriteHeader(400)
+			ctx.Resp.Write([]byte("id 输入不对"))
+			return
+		}
+
+		ctx.Resp.Write([]byte(fmt.Sprintf("hello id: %d", id)))
+	})
+
 	err := h.Start(":8087")
 	if err != nil {
 		return
