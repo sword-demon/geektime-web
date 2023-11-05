@@ -5,6 +5,7 @@ package v2
 import (
 	"fmt"
 	"net/http"
+	"sync"
 	"testing"
 )
 
@@ -52,8 +53,27 @@ func TestServer(t *testing.T) {
 		ctx.Resp.Write([]byte(fmt.Sprintf("hello id: %d", id)))
 	})
 
+	type User struct {
+		Name string `json:"name"`
+	}
+
+	h.Get("/user/:id", func(ctx *Context) {
+		ctx.RespJSON(200, User{Name: "张三"})
+	})
+
 	err := h.Start(":8087")
 	if err != nil {
 		return
 	}
+}
+
+type SafeContext struct {
+	Context
+	mutex sync.RWMutex
+}
+
+func (c *SafeContext) RespJSON1(val any) error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	return c.Context.RespJSONOK(val)
 }

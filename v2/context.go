@@ -17,6 +17,39 @@ type Context struct {
 
 	// cacheQueryValues url.Values 引入URL 查询参数缓存
 	cacheQueryValues url.Values
+
+	// cookie 的默认配置 不推荐
+	// cookieSameSite http.SameSite
+}
+
+// SetCookie 设置 cookie
+func (c *Context) SetCookie(ck *http.Cookie) {
+	// 不推荐
+	// ck.SameSite = c.cookieSameSite
+	http.SetCookie(c.Resp, ck)
+}
+
+func (c *Context) RespJSONOK(val any) error {
+	return c.RespJSON(http.StatusOK, val)
+}
+
+// RespJSON 响应 JSON 数据
+func (c *Context) RespJSON(code int, val any) error {
+	bs, err := json.Marshal(val)
+	if err != nil {
+		return err
+	}
+	c.Resp.WriteHeader(code)
+	// 不设置也能正常
+	c.Resp.Header().Set("Content-Type", "application/json")
+	// n 返回的处理的数据的长度
+	n, err := c.Resp.Write(bs)
+	if n != len(bs) {
+		// 说明写入的长度和 val 的长度不一致
+		// 一般来说不需要处理，但是如果是自定义的类型，那么就需要处理
+		return errors.New("web: 写入长度和 val 长度不一致")
+	}
+	return err
 }
 
 func (c *Context) BindJSON(val any) error {
